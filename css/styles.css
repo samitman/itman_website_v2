@@ -151,11 +151,10 @@ body {
 .hero {
   position: relative;
   z-index: 1;
-  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 120px 2rem 70px;
+  padding: 120px 2rem 40px;
 }
 
 .hero-inner {
@@ -502,7 +501,9 @@ section {
    LOGOS / AFFILIATIONS
    ============================================ */
 .logos-section {
-  padding: 60px 2rem;
+  position: relative;
+  z-index: 1;
+  padding: 40px 2rem;
 }
 
 .logos-label {
@@ -517,17 +518,18 @@ section {
 }
 
 .logos-track {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 3rem;
-  flex-wrap: wrap;
-  max-width: 900px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+  max-width: 800px;
   margin: 0 auto;
+  justify-items: center;
+  align-items: center;
 }
 
 .logos-track img {
-  height: 80px;
+  height: 100px;
+  max-width: 175px;
   width: auto;
   object-fit: contain;
   opacity: 0.5;
@@ -663,12 +665,15 @@ section {
 
 /* Skills grid */
 .skills-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 1rem;
 }
 
 .skill-category {
+  flex: 0 1 calc(33.333% - 0.67rem);
+  min-width: 260px;
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
   border-radius: 14px;
@@ -1161,6 +1166,6 @@ section {
   .resume-item { padding: 1.25rem 1.25rem; }
   .edu-item { padding: 1.25rem 1.25rem; }
 
-  .logos-track { gap: 1.5rem; }
-  .logos-track img { height: 56px; }
+  .logos-track { grid-template-columns: repeat(2, 1fr); gap: 1.5rem; }
+  .logos-track img { height: 75px; max-width: 138px; }
 }
