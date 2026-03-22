@@ -704,11 +704,11 @@ section.section-visible::after {
 
 .logos-marquee {
   display: flex;
-  width: max-content;
-  animation: marquee 35s linear infinite;
+  overflow: hidden;
+  width: 100%;
 }
 
-.logos-marquee:hover {
+.logos-marquee:hover .logos-track {
   animation-play-state: paused;
 }
 
@@ -717,6 +717,9 @@ section.section-visible::after {
   align-items: center;
   gap: 4rem;
   padding: 0 2rem;
+  flex-shrink: 0;
+  min-width: max-content;
+  animation: marquee 35s linear infinite;
 }
 
 .logos-track img {
@@ -1243,12 +1246,10 @@ section.section-visible::after {
 .footer-logo img {
   height: 80px;
   width: auto;
-  opacity: 0.5;
   transition: all 0.4s var(--ease-out-expo);
 }
 
 .footer-logo:hover img {
-  opacity: 1;
   transform: scale(1.05);
 }
 
@@ -1329,7 +1330,7 @@ section.section-visible::after {
 
 @keyframes marquee {
   0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
+  100% { transform: translateX(-100%); }
 }
 
 @keyframes orbFloat1 {
@@ -1360,11 +1361,14 @@ section.section-visible::after {
   }
 
   .logos-marquee {
-    animation: none;
     flex-wrap: wrap;
     justify-content: center;
     gap: 2rem;
-    width: auto;
+  }
+
+  .logos-track {
+    animation: none;
+    min-width: 0;
   }
 
   .logos-track:nth-child(2) {
@@ -1446,7 +1450,7 @@ section.section-visible::after {
 
   .footer-links { align-items: center; }
   .footer-link { margin-left: 0; }
-  .footer-logo { display: flex; justify-content: center; }
+  .footer-logo { display: flex; justify-content: center; width: 100%; }
   .footer-bottom { flex-direction: column; gap: 1rem; text-align: center; }
 
   .photo-container {
