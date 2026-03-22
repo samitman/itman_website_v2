@@ -703,12 +703,11 @@ section.section-visible::after {
 }
 
 .logos-marquee {
-  display: flex;
-  overflow: hidden;
-  width: 100%;
+  display: inline-flex;
+  animation: marquee 35s linear infinite;
 }
 
-.logos-marquee:hover .logos-track {
+.logos-marquee:hover {
   animation-play-state: paused;
 }
 
@@ -718,8 +717,6 @@ section.section-visible::after {
   gap: 4rem;
   padding: 0 2rem;
   flex-shrink: 0;
-  min-width: max-content;
-  animation: marquee 35s linear infinite;
 }
 
 .logos-track img {
@@ -1330,7 +1327,7 @@ section.section-visible::after {
 
 @keyframes marquee {
   0% { transform: translateX(0); }
-  100% { transform: translateX(-100%); }
+  100% { transform: translateX(-50%); }
 }
 
 @keyframes orbFloat1 {
@@ -1361,14 +1358,12 @@ section.section-visible::after {
   }
 
   .logos-marquee {
+    animation: none;
+    display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 2rem;
-  }
-
-  .logos-track {
-    animation: none;
-    min-width: 0;
+    width: auto;
   }
 
   .logos-track:nth-child(2) {
@@ -1520,6 +1515,7 @@ section.section-visible::after {
   .timeline-container { padding-left: 20px; }
   .timeline-container .resume-item::after { left: -26px; width: 8px; height: 8px; }
 
+  .logos-section { overflow: visible; padding: 40px 0; }
   .logos-track img { height: 60px; max-width: 130px; }
   .logos-track { gap: 3rem; }
 }
