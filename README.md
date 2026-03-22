@@ -11,7 +11,7 @@ Static website hosted on **AWS S3**. No build step, server-side rendering, or ba
 - **HTML** — Single-page site (`index.html`)
 - **CSS** — Custom styles in `css/styles.css` (no frameworks)
 - **JavaScript** — Vanilla JS in `js/main.js` (no frameworks)
-- **Fonts** — Google Fonts CDN (Inter + IBM Plex Sans)
+- **Fonts** — Google Fonts CDN (Space Grotesk + DM Sans)
 - **No build tools** — No npm, webpack, or bundlers
 
 ## Design
@@ -20,11 +20,21 @@ Static website hosted on **AWS S3**. No build step, server-side rendering, or ba
 - **CSS custom properties** for consistent theming (`--primary`, `--bg-dark`, etc.)
 - **Responsive** with breakpoints at `968px` and `640px`
 - **Mobile hamburger menu** with slide-in panel
-- **Glassmorphism** nav bar (backdrop-filter blur on scroll)
-- **Particle canvas** background with mouse interaction
-- **3D tilt effect** on profile photo (CSS perspective transforms)
+- **Floating glassmorphism nav** — detaches from edges on scroll with rounded corners and backdrop blur
+- **Animated digital circuit board** canvas background with mouse/touch interaction
+- **3D tilt effect** on profile photo with animated conic-gradient border
 - **Scroll-triggered reveal animations** via Intersection Observer
-- **Scroll progress bar** at top of page
+- **Scroll progress bar** with glow effect
+- **Infinite logo marquee** with grayscale-to-color hover effect
+- **Mouse-following glow** on expertise cards
+- **Magnetic button effect** — buttons subtly pull toward cursor
+- **Animated resume timeline** with vertical line that draws on scroll
+- **Staggered skill tag entrance** animations
+- **Background gradient orbs** with slow float animation
+- **Film grain texture** overlay
+- **Cursor-following ambient glow** (desktop only)
+- **`prefers-reduced-motion`** fully respected for accessibility
+- **Mobile-optimized** — touch events, reduced canvas complexity, no GPU-heavy effects on mobile
 
 ## Project Structure
 
@@ -54,10 +64,10 @@ images/
 
 ## Page Sections
 
-1. **Hero** — Name, title, credentials, CTA buttons, profile photo with 3D tilt
-2. **Organizations** — 4x2 logo grid: DOW, USSF, DAF, CISA, USSF S6, USSF Delta, Optum, KIPP
-3. **Expertise** — Three cards: IT Innovation, Project Management, Cybersecurity
-4. **Resume** — Experience (5 roles), Education (NJIT), Technical Skills grid
+1. **Hero** — Name, title, credentials, CTA buttons, profile photo with 3D tilt and animated gradient border
+2. **Organizations** — Infinite scrolling logo marquee: DOW, USSF, DAF, CISA, USSF S6, USSF Delta, Optum, KIPP
+3. **Expertise** — Three cards with mouse-follow glow: IT Innovation, Project Management, Cybersecurity
+4. **Resume** — Animated timeline with experience (5 roles), Education (NJIT), Technical Skills grid with staggered tag animations
 5. **Featured Content** — Three cards linking to articles and GitHub
 6. **Footer** — Contact info, social links, logo
 
@@ -73,7 +83,9 @@ images/
 
 ## Layout Notes
 
-- **Logos grid:** 4 columns desktop, 2 columns mobile. Logos use `max-width` constraint to keep wide logos (Optum, KIPP) visually consistent with square/tall ones.
+- **Logos marquee:** Infinite horizontal scroll with duplicated track. Pauses on hover. Logos start grayscale, colorize on hover.
+- **Cards:** Semi-opaque dark backgrounds (`rgba(10,14,26,0.75)`) with `backdrop-filter: blur(12px)` for readability over circuit background.
 - **Skills grid:** Flexbox with centered wrapping — 3 cards top row, 2 cards bottom row centered.
 - **Featured cards:** Flexbox columns with `margin-top: auto` on arrow links to align them at the bottom regardless of content height.
-- **Section spacing:** `70px` vertical padding on sections, `40px` on hero bottom, `40px` on logos section.
+- **Section spacing:** `80px` vertical padding on sections, `60px` hero bottom, `50px` logos section.
+- **Circuit background:** Canvas-rendered grid of orthogonal traces, junction nodes, IC chip elements, and animated data pulses. Sparser grid and no `shadowBlur` on mobile for performance.

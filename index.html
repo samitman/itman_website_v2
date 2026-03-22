@@ -12,16 +12,29 @@
   <link href="images/webclip.png" rel="apple-touch-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
+
+  <!-- Grain Overlay -->
+  <div class="grain-overlay"></div>
+
+  <!-- Background Orbs -->
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
 
   <!-- Scroll Progress Bar -->
   <div class="scroll-progress" id="scrollProgress"></div>
 
   <!-- Particle Canvas -->
   <canvas id="particles-canvas"></canvas>
+
+  <!-- Custom Cursor Glow -->
+  <div class="cursor-glow" id="cursorGlow"></div>
 
   <!-- Navigation -->
   <nav class="nav" id="nav">
@@ -85,15 +98,27 @@
   <!-- Logos / Affiliations -->
   <div class="logos-section">
     <div class="logos-label">Organizations I've Worked With</div>
-    <div class="logos-track">
-      <img src="images/DOW_logo.png" alt="Department of the Air Force - Warfighter">
-      <img src="images/USSF_Logo.png" alt="USSF Logo">
-      <img src="images/DAF_logo.png" alt="Department of the Air Force">
-      <img src="images/cisa_logo.png" alt="CISA">
-      <img src="images/USSF_S6_png.png" alt="USSF S6">
-      <img src="images/USSF_delta_logo.png" alt="United States Space Force">
-      <img src="images/OptumLogo.png" alt="Optum - UnitedHealth Group">
-      <img src="images/KIPPlogo.png" alt="KIPP New Jersey">
+    <div class="logos-marquee">
+      <div class="logos-track">
+        <img src="images/DOW_logo.png" alt="Department of the Air Force - Warfighter">
+        <img src="images/USSF_Logo.png" alt="USSF Logo">
+        <img src="images/DAF_logo.png" alt="Department of the Air Force">
+        <img src="images/cisa_logo.png" alt="CISA">
+        <img src="images/USSF_S6_png.png" alt="USSF S6">
+        <img src="images/USSF_delta_logo.png" alt="United States Space Force">
+        <img src="images/OptumLogo.png" alt="Optum - UnitedHealth Group">
+        <img src="images/KIPPlogo.png" alt="KIPP New Jersey">
+      </div>
+      <div class="logos-track" aria-hidden="true">
+        <img src="images/DOW_logo.png" alt="">
+        <img src="images/USSF_Logo.png" alt="">
+        <img src="images/DAF_logo.png" alt="">
+        <img src="images/cisa_logo.png" alt="">
+        <img src="images/USSF_S6_png.png" alt="">
+        <img src="images/USSF_delta_logo.png" alt="">
+        <img src="images/OptumLogo.png" alt="">
+        <img src="images/KIPPlogo.png" alt="">
+      </div>
     </div>
   </div>
 
@@ -150,6 +175,8 @@
         <!-- Experience -->
         <div class="resume-block reveal">
           <div class="resume-block-title">Experience</div>
+          <div class="timeline-container">
+          <div class="timeline-line"></div>
 
           <div class="resume-item">
             <div class="resume-item-header">
@@ -212,6 +239,7 @@
               <li>Managed vendor repair tickets and oversaw device repairs, reducing average repair time by two days.</li>
               <li>Conducted on-site tech audits and managed asset inventories, ensuring accurate tracking and compliance.</li>
             </ul>
+          </div>
           </div>
         </div>
 
