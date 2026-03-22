@@ -1445,7 +1445,7 @@ section.section-visible::after {
 
   .footer-links { align-items: center; }
   .footer-link { margin-left: 0; }
-  .footer-logo { display: flex; justify-content: center; width: 100%; }
+  .footer-logo { justify-self: center; display: block; text-align: center; }
   .footer-bottom { flex-direction: column; gap: 1rem; text-align: center; }
 
   .photo-container {
@@ -1516,6 +1516,6 @@ section.section-visible::after {
   .timeline-container .resume-item::after { left: -26px; width: 8px; height: 8px; }
 
   .logos-section { overflow: visible; padding: 40px 0; }
-  .logos-track img { height: 60px; max-width: 130px; }
+  .logos-track img { height: 80px; max-width: 160px; }
   .logos-track { gap: 3rem; }
 }
