@@ -1,5 +1,7 @@
 /* ============================================
    DIGITAL CIRCUIT BACKGROUND
+   Channel-routed PCB traces with clean bends,
+   parallel bundles, and no overlapping.
    ============================================ */
 (function() {
   var canvas = document.getElementById('particles-canvas');
@@ -7,17 +9,24 @@
   var mouse = { x: null, y: null };
   var isMobile = window.innerWidth < 768;
   var MOUSE_RADIUS = 300;
-  var GRID = isMobile ? 70 : 50;
-  var nodes = [];
-  var traces = [];
+  var routes = [];
+  var junctions = [];
+  var chips = [];
   var pulses = [];
   var frameCount = 0;
-  var MAX_PULSES = isMobile ? 8 : 25;
+  var MAX_PULSES = isMobile ? 8 : 20;
 
-  // Color
+  // Colors
   var CR = 13, CG = 177, CB = 159;
-  // Brighter highlight for glow
   var HR = 74, HG = 234, HB = 219;
+
+  // Seeded PRNG
+  var _seed = 42;
+  function srand(s) { _seed = s; }
+  function rand() {
+    _seed = (_seed * 16807 + 0) % 2147483647;
+    return (_seed - 1) / 2147483646;
+  }
 
   function resize() {
     canvas.width = window.innerWidth;
@@ -25,184 +34,382 @@
     buildCircuit();
   }
 
-  function seed(s) {
-    var x = Math.sin(s * 127.1 + 311.7) * 43758.5453;
-    return x - Math.floor(x);
-  }
-
+  /* ------------------------------------------
+     CHANNEL-BASED TRACE ROUTING
+     Traces snap to grid channels and route with
+     clean horizontal/vertical segments + 45° chamfered bends.
+     ------------------------------------------ */
   function buildCircuit() {
-    nodes = [];
-    traces = [];
+    routes = [];
+    junctions = [];
+    chips = [];
 
-    var cols = Math.ceil(canvas.width / GRID) + 2;
-    var rows = Math.ceil(canvas.height / GRID) + 2;
-    var grid = {};
+    var W = canvas.width;
+    var H = canvas.height;
+    var SPACING = isMobile ? 18 : 14;  // min spacing between parallel traces
+    var cx = W / 2, cy = H / 2;        // convergence center
 
-    // Place nodes — higher density (~40%)
-    for (var r = 0; r < rows; r++) {
-      for (var c = 0; c < cols; c++) {
-        var s = r * 1000 + c;
-        // More nodes near edges for that border-heavy look
-        var edgeBias = (c < 4 || c > cols - 5 || r < 4 || r > rows - 5) ? 0.55 : 0.35;
-        if (seed(s) < edgeBias) {
-          var node = {
-            x: c * GRID,
-            y: r * GRID,
-            col: c, row: r,
-            radius: seed(s + 3) < 0.12 ? 3.5 : seed(s + 3) < 0.3 ? 2.5 : 1.5,
-            isJunction: seed(s + 4) < 0.15,
-            isChip: seed(s + 4) >= 0.15 && seed(s + 4) < 0.2,
-            baseAlpha: 0.25 + seed(s + 5) * 0.25,
-            alpha: 0,
-            phase: seed(s + 6) * Math.PI * 2
-          };
-          nodes.push(node);
-          grid[r + ',' + c] = node;
+    srand(7919);
+
+    // Occupied channel tracker — prevents traces from sharing segments
+    var occupied = {};
+    function channelKey(x1, y1, x2, y2) {
+      // Normalize direction so A→B and B→A are the same
+      if (x1 > x2 || (x1 === x2 && y1 > y2)) {
+        var t = x1; x1 = x2; x2 = t;
+        t = y1; y1 = y2; y2 = t;
+      }
+      return Math.round(x1) + ',' + Math.round(y1) + '-' + Math.round(x2) + ',' + Math.round(y2);
+    }
+    function isOccupied(x1, y1, x2, y2) {
+      return !!occupied[channelKey(x1, y1, x2, y2)];
+    }
+    function markOccupied(x1, y1, x2, y2) {
+      occupied[channelKey(x1, y1, x2, y2)] = true;
+    }
+
+    // Generate traces from each edge, converging toward center
+    // Each trace: start at edge → horizontal/vertical run → 45° chamfer bend → perpendicular run → endpoint
+    var numTraces = isMobile ? 30 : 60;
+    var chamferSize = isMobile ? 20 : 16;
+
+    for (var i = 0; i < numTraces; i++) {
+      var edge = rand();   // which edge to start from
+      var points = [];
+      var startX, startY, endX, endY;
+      var hFirst;          // horizontal-first or vertical-first routing
+
+      if (edge < 0.3) {
+        // LEFT edge → route right toward center
+        startX = -10;
+        startY = Math.round((40 + rand() * (H - 80)) / SPACING) * SPACING;
+        endX = cx * (0.3 + rand() * 0.9);
+        endY = startY + (rand() - 0.5) * H * 0.5;
+        endY = Math.round(endY / SPACING) * SPACING;
+        endY = Math.max(40, Math.min(H - 40, endY));
+        hFirst = true;
+      } else if (edge < 0.6) {
+        // RIGHT edge → route left toward center
+        startX = W + 10;
+        startY = Math.round((40 + rand() * (H - 80)) / SPACING) * SPACING;
+        endX = cx * (0.5 + rand() * 1.0);
+        endY = startY + (rand() - 0.5) * H * 0.5;
+        endY = Math.round(endY / SPACING) * SPACING;
+        endY = Math.max(40, Math.min(H - 40, endY));
+        hFirst = true;
+      } else if (edge < 0.8) {
+        // TOP edge → route down toward center
+        startX = Math.round((40 + rand() * (W - 80)) / SPACING) * SPACING;
+        startY = -10;
+        endX = startX + (rand() - 0.5) * W * 0.4;
+        endX = Math.round(endX / SPACING) * SPACING;
+        endX = Math.max(40, Math.min(W - 40, endX));
+        endY = cy * (0.3 + rand() * 0.9);
+        hFirst = false;
+      } else {
+        // BOTTOM edge → route up toward center
+        startX = Math.round((40 + rand() * (W - 80)) / SPACING) * SPACING;
+        startY = H + 10;
+        endX = startX + (rand() - 0.5) * W * 0.4;
+        endX = Math.round(endX / SPACING) * SPACING;
+        endX = Math.max(40, Math.min(W - 40, endX));
+        endY = cy * (0.5 + rand() * 1.0);
+        hFirst = false;
+      }
+
+      // Snap end coords to grid
+      endX = Math.round(endX / SPACING) * SPACING;
+      endY = Math.round(endY / SPACING) * SPACING;
+
+      // Build polyline with chamfered 90° bend
+      var midX, midY, cham;
+      if (hFirst) {
+        // Horizontal first → vertical second
+        midX = endX;
+        midY = startY;
+        // Add 45° chamfer at the bend
+        cham = Math.min(chamferSize, Math.abs(endX - startX) * 0.3, Math.abs(endY - startY) * 0.3);
+        if (cham < 4) cham = 0;
+        var dirX = midX > startX ? 1 : -1;
+        var dirY = endY > midY ? 1 : -1;
+        if (cham > 0 && Math.abs(endX - startX) > cham * 2 && Math.abs(endY - startY) > cham * 2) {
+          points = [
+            { x: startX, y: startY },
+            { x: midX - dirX * cham, y: startY },
+            { x: midX, y: startY + dirY * cham },
+            { x: midX, y: endY }
+          ];
+        } else {
+          points = [
+            { x: startX, y: startY },
+            { x: midX, y: startY },
+            { x: midX, y: endY }
+          ];
         }
+      } else {
+        // Vertical first → horizontal second
+        midX = startX;
+        midY = endY;
+        cham = Math.min(chamferSize, Math.abs(endY - startY) * 0.3, Math.abs(endX - startX) * 0.3);
+        if (cham < 4) cham = 0;
+        var dirY2 = midY > startY ? 1 : -1;
+        var dirX2 = endX > midX ? 1 : -1;
+        if (cham > 0 && Math.abs(endY - startY) > cham * 2 && Math.abs(endX - startX) > cham * 2) {
+          points = [
+            { x: startX, y: startY },
+            { x: startX, y: midY - dirY2 * cham },
+            { x: startX + dirX2 * cham, y: midY },
+            { x: endX, y: midY }
+          ];
+        } else {
+          points = [
+            { x: startX, y: startY },
+            { x: startX, y: midY },
+            { x: endX, y: midY }
+          ];
+        }
+      }
+
+      // Check if any segment overlaps an existing trace
+      var overlaps = false;
+      for (var p = 0; p < points.length - 1; p++) {
+        if (isOccupied(points[p].x, points[p].y, points[p + 1].x, points[p + 1].y)) {
+          overlaps = true;
+          break;
+        }
+      }
+
+      // If overlapping, try offsetting by one channel
+      if (overlaps) {
+        var offset = SPACING * (rand() > 0.5 ? 1 : -1);
+        for (var p = 0; p < points.length; p++) {
+          if (hFirst) points[p].y += offset;
+          else points[p].x += offset;
+        }
+        // Re-check
+        overlaps = false;
+        for (var p = 0; p < points.length - 1; p++) {
+          if (isOccupied(points[p].x, points[p].y, points[p + 1].x, points[p + 1].y)) {
+            overlaps = true;
+            break;
+          }
+        }
+        if (overlaps) continue; // skip this trace entirely
+      }
+
+      // Mark segments as occupied
+      for (var p = 0; p < points.length - 1; p++) {
+        markOccupied(points[p].x, points[p].y, points[p + 1].x, points[p + 1].y);
+      }
+
+      // Route properties — subtle alpha variation
+      var routeAlpha = 0.12 + rand() * 0.28;
+      var routeWidth = 0.7 + rand() * 0.8;
+
+      // Pre-compute segment lengths for pulse animation
+      var segs = [];
+      var totalLen = 0;
+      for (var p = 0; p < points.length - 1; p++) {
+        var dx = points[p + 1].x - points[p].x;
+        var dy = points[p + 1].y - points[p].y;
+        var len = Math.sqrt(dx * dx + dy * dy);
+        segs.push({ from: points[p], to: points[p + 1], len: len });
+        totalLen += len;
+      }
+
+      routes.push({
+        points: points,
+        segs: segs,
+        totalLen: totalLen,
+        alpha: routeAlpha,
+        width: routeWidth,
+        phase: rand() * Math.PI * 2
+      });
+
+      // Junction nodes at endpoints and bends (only if on-screen)
+      for (var p = 0; p < points.length; p++) {
+        var pt = points[p];
+        if (pt.x < -30 || pt.x > W + 30 || pt.y < -30 || pt.y > H + 30) continue;
+        var isEnd = (p === 0 || p === points.length - 1);
+        var jt = rand();
+        junctions.push({
+          x: pt.x,
+          y: pt.y,
+          radius: isEnd ? 1.5 : 2 + rand() * 1.5,
+          type: isEnd ? 'end' : (jt < 0.4 ? 'glow' : 'dot'),
+          baseAlpha: routeAlpha * (isEnd ? 0.7 : 1.1),
+          alpha: 0,
+          phase: rand() * Math.PI * 2
+        });
       }
     }
 
-    // Build traces — strictly orthogonal (horizontal + vertical)
-    var traceSet = {};
-    nodes.forEach(function(n) {
-      // Connect right (try up to 5 cells away for longer traces)
-      for (var dc = 1; dc <= 5; dc++) {
-        var nb = grid[n.row + ',' + (n.col + dc)];
-        if (nb) {
-          var key = n.row + ',' + n.col + '-' + nb.row + ',' + nb.col;
-          if (!traceSet[key]) {
-            traces.push({ from: n, to: nb, horizontal: true });
-            traceSet[key] = true;
-          }
-          break;
-        }
-      }
-      // Connect down
-      for (var dr = 1; dr <= 5; dr++) {
-        var nb2 = grid[(n.row + dr) + ',' + n.col];
-        if (nb2) {
-          var key2 = n.row + ',' + n.col + '-' + nb2.row + ',' + nb2.col;
-          if (!traceSet[key2]) {
-            traces.push({ from: n, to: nb2, horizontal: false });
-            traceSet[key2] = true;
-          }
-          break;
-        }
-      }
-      // Some L-shaped traces for complexity
-      if (seed(n.row * 997 + n.col * 113) < 0.12) {
-        var cornerCol = n.col + (seed(n.row * 53 + n.col) > 0.5 ? 2 : 3);
-        var cornerRow = n.row + (seed(n.col * 71 + n.row) > 0.5 ? 2 : 3);
-        var corner = grid[n.row + ',' + cornerCol];
-        var end = grid[cornerRow + ',' + cornerCol];
-        if (corner && end) {
-          var lk = n.row + ',' + n.col + '-L-' + cornerRow + ',' + cornerCol;
-          if (!traceSet[lk]) {
-            traces.push({ from: n, to: { x: cornerCol * GRID, y: n.y }, horizontal: true, isSegment: true });
-            traces.push({ from: { x: cornerCol * GRID, y: n.y }, to: end, horizontal: false, isSegment: true });
-            traceSet[lk] = true;
-          }
-        }
-      }
-    });
+    // IC chip blocks — small rectangular components placed at some junction clusters
+    var numChips = isMobile ? 4 : 10;
+    for (var c = 0; c < numChips; c++) {
+      var chipX = 80 + rand() * (W - 160);
+      var chipY = 80 + rand() * (H - 160);
+      chipX = Math.round(chipX / SPACING) * SPACING;
+      chipY = Math.round(chipY / SPACING) * SPACING;
+      var chipW = 2 + Math.floor(rand() * 3); // in grid cells
+      var chipH = 2 + Math.floor(rand() * 3);
+      chips.push({
+        x: chipX,
+        y: chipY,
+        w: chipW * SPACING,
+        h: chipH * SPACING,
+        baseAlpha: 0.15 + rand() * 0.2,
+        alpha: 0,
+        phase: rand() * Math.PI * 2,
+        pins: chipW + chipH // number of pin dots
+      });
+    }
   }
 
+  /* ------------------------------------------
+     PULSE SPAWNING & POSITION
+     ------------------------------------------ */
   function spawnPulse() {
-    if (traces.length === 0) return;
-    var trace = traces[Math.floor(Math.random() * traces.length)];
+    if (routes.length === 0) return;
+    var route = routes[Math.floor(Math.random() * routes.length)];
+    if (route.totalLen < 30) return;
+
     pulses.push({
-      trace: trace,
+      route: route,
       progress: 0,
-      speed: 0.004 + Math.random() * 0.012,
+      // Slower, calmer speed range: 0.001 – 0.003
+      speed: (0.001 + Math.random() * 0.002) * (isMobile ? 0.8 : 1),
       reverse: Math.random() > 0.5,
-      alpha: 0.6 + Math.random() * 0.4,
-      size: 2 + Math.random() * 2.5
+      alpha: 0.5 + Math.random() * 0.35,
+      size: 1.5 + Math.random() * 1.5
     });
   }
 
-  function getTraceAlpha(trace) {
-    if (trace.from.alpha !== undefined && trace.to.alpha !== undefined) {
-      return (trace.from.alpha + trace.to.alpha) / 2;
+  function getPulsePos(route, t) {
+    var dist = t * route.totalLen;
+    var acc = 0;
+    var segs = route.segs;
+    for (var i = 0; i < segs.length; i++) {
+      if (acc + segs[i].len >= dist || i === segs.length - 1) {
+        var local = segs[i].len > 0 ? (dist - acc) / segs[i].len : 0;
+        local = Math.max(0, Math.min(1, local));
+        return {
+          x: segs[i].from.x + (segs[i].to.x - segs[i].from.x) * local,
+          y: segs[i].from.y + (segs[i].to.y - segs[i].from.y) * local
+        };
+      }
+      acc += segs[i].len;
     }
-    return 0.3;
+    var last = segs[segs.length - 1];
+    return { x: last.to.x, y: last.to.y };
   }
 
-  function drawTraces() {
-    // Draw all traces with glow
-    // First pass: outer glow (thicker, more transparent)
+  /* ------------------------------------------
+     DRAWING
+     ------------------------------------------ */
+  function drawRoutes() {
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    traces.forEach(function(t) {
-      var a = getTraceAlpha(t);
-      if (a < 0.05) return;
+    var mouseActive = mouse.x !== null;
 
-      ctx.beginPath();
-      ctx.moveTo(t.from.x, t.from.y);
-      ctx.lineTo(t.to.x, t.to.y);
+    routes.forEach(function(route) {
+      if (route.points.length < 2) return;
+
+      // Mouse proximity boost
+      var proxBoost = 0;
+      if (mouseActive) {
+        for (var i = 0; i < route.points.length; i++) {
+          var dx = mouse.x - route.points[i].x;
+          var dy = mouse.y - route.points[i].y;
+          var d = Math.sqrt(dx * dx + dy * dy);
+          if (d < MOUSE_RADIUS) {
+            var p = 1 - d / MOUSE_RADIUS;
+            if (p > proxBoost) proxBoost = p;
+          }
+        }
+      }
+
+      var a = route.alpha + Math.sin(frameCount * 0.006 + route.phase) * 0.03;
+      a = Math.min(a + proxBoost * 0.35, 0.75);
 
       // Outer glow
-      ctx.strokeStyle = 'rgba(' + CR + ',' + CG + ',' + CB + ',' + (a * 0.15) + ')';
-      ctx.lineWidth = 4;
-      ctx.stroke();
-    });
-
-    // Second pass: core line (thinner, brighter)
-    traces.forEach(function(t) {
-      var a = getTraceAlpha(t);
-      if (a < 0.05) return;
-
       ctx.beginPath();
-      ctx.moveTo(t.from.x, t.from.y);
-      ctx.lineTo(t.to.x, t.to.y);
+      ctx.moveTo(route.points[0].x, route.points[0].y);
+      for (var i = 1; i < route.points.length; i++) {
+        ctx.lineTo(route.points[i].x, route.points[i].y);
+      }
+      ctx.strokeStyle = 'rgba(' + CR + ',' + CG + ',' + CB + ',' + (a * 0.1) + ')';
+      ctx.lineWidth = route.width + 3.5;
+      ctx.stroke();
 
-      // Core bright line
+      // Core trace
+      ctx.beginPath();
+      ctx.moveTo(route.points[0].x, route.points[0].y);
+      for (var i = 1; i < route.points.length; i++) {
+        ctx.lineTo(route.points[i].x, route.points[i].y);
+      }
       ctx.strokeStyle = 'rgba(' + CR + ',' + CG + ',' + CB + ',' + (a * 0.5) + ')';
-      ctx.lineWidth = 1.2;
+      ctx.lineWidth = route.width;
       ctx.stroke();
     });
   }
 
-  function drawNodes() {
-    nodes.forEach(function(node) {
-      var a = node.alpha;
+  function drawJunctions() {
+    junctions.forEach(function(j) {
+      var a = j.alpha;
       if (a < 0.03) return;
 
-      if (node.isChip) {
-        // IC chip: small filled rect with glow
-        var sz = 10;
+      if (j.type === 'glow') {
         if (!isMobile) {
-          ctx.shadowColor = 'rgba(' + HR + ',' + HG + ',' + HB + ',' + (a * 0.5) + ')';
+          ctx.shadowColor = 'rgba(' + HR + ',' + HG + ',' + HB + ',' + (a * 0.4) + ')';
           ctx.shadowBlur = 8;
         }
-        ctx.fillStyle = 'rgba(' + CR + ',' + CG + ',' + CB + ',' + (a * 0.3) + ')';
-        ctx.fillRect(node.x - sz / 2, node.y - sz / 2, sz, sz);
-        ctx.strokeStyle = 'rgba(' + HR + ',' + HG + ',' + HB + ',' + (a * 0.7) + ')';
-        ctx.lineWidth = 1;
-        ctx.strokeRect(node.x - sz / 2, node.y - sz / 2, sz, sz);
-        ctx.shadowBlur = 0;
-      } else if (node.isJunction) {
-        // Bright junction node with glow ring
-        if (!isMobile) {
-          ctx.shadowColor = 'rgba(' + HR + ',' + HG + ',' + HB + ',' + (a * 0.6) + ')';
-          ctx.shadowBlur = 12;
-        }
         ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius + 1, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(' + HR + ',' + HG + ',' + HB + ',' + (a * 0.8) + ')';
+        ctx.arc(j.x, j.y, j.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(' + HR + ',' + HG + ',' + HB + ',' + (a * 0.7) + ')';
         ctx.fill();
         ctx.shadowBlur = 0;
-        // Outer ring
+        // Ring
         ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius + 3.5, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(' + CR + ',' + CG + ',' + CB + ',' + (a * 0.3) + ')';
-        ctx.lineWidth = 0.8;
+        ctx.arc(j.x, j.y, j.radius + 2.5, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(' + CR + ',' + CG + ',' + CB + ',' + (a * 0.2) + ')';
+        ctx.lineWidth = 0.5;
         ctx.stroke();
-      } else {
-        // Small dot
+      } else if (j.type === 'end') {
         ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
-        ctx.fillStyle = 'rgba(' + CR + ',' + CG + ',' + CB + ',' + (a * 0.7) + ')';
+        ctx.arc(j.x, j.y, j.radius, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(' + CR + ',' + CG + ',' + CB + ',' + (a * 0.6) + ')';
         ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.arc(j.x, j.y, j.radius * 0.5, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(' + CR + ',' + CG + ',' + CB + ',' + (a * 0.45) + ')';
+        ctx.fill();
+      }
+    });
+  }
+
+  function drawChips() {
+    chips.forEach(function(chip) {
+      var a = chip.alpha;
+      if (a < 0.03) return;
+
+      // Chip body
+      ctx.fillStyle = 'rgba(' + CR + ',' + CG + ',' + CB + ',' + (a * 0.08) + ')';
+      ctx.fillRect(chip.x, chip.y, chip.w, chip.h);
+      ctx.strokeStyle = 'rgba(' + CR + ',' + CG + ',' + CB + ',' + (a * 0.3) + ')';
+      ctx.lineWidth = 0.6;
+      ctx.strokeRect(chip.x, chip.y, chip.w, chip.h);
+
+      // Internal grid dots (like pin pads)
+      var dotSpacing = Math.min(chip.w, chip.h) / (chip.pins > 4 ? 3 : 2);
+      for (var dx = dotSpacing; dx < chip.w; dx += dotSpacing) {
+        for (var dy = dotSpacing; dy < chip.h; dy += dotSpacing) {
+          ctx.beginPath();
+          ctx.arc(chip.x + dx, chip.y + dy, 1.2, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(' + HR + ',' + HG + ',' + HB + ',' + (a * 0.5) + ')';
+          ctx.fill();
+        }
       }
     });
   }
@@ -210,71 +417,79 @@
   function drawPulses() {
     pulses.forEach(function(p) {
       var t = p.reverse ? 1 - p.progress : p.progress;
-      var tr = p.trace;
-      var px = tr.from.x + (tr.to.x - tr.from.x) * t;
-      var py = tr.from.y + (tr.to.y - tr.from.y) * t;
+      var pos = getPulsePos(p.route, t);
 
-      // Bright glow halo
-      var grad = ctx.createRadialGradient(px, py, 0, px, py, p.size * 8);
-      grad.addColorStop(0, 'rgba(' + HR + ',' + HG + ',' + HB + ',' + (p.alpha * 0.35) + ')');
-      grad.addColorStop(0.4, 'rgba(' + CR + ',' + CG + ',' + CB + ',' + (p.alpha * 0.12) + ')');
+      // Glow halo
+      var grad = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, p.size * 7);
+      grad.addColorStop(0, 'rgba(' + HR + ',' + HG + ',' + HB + ',' + (p.alpha * 0.25) + ')');
+      grad.addColorStop(0.4, 'rgba(' + CR + ',' + CG + ',' + CB + ',' + (p.alpha * 0.08) + ')');
       grad.addColorStop(1, 'rgba(' + CR + ',' + CG + ',' + CB + ',0)');
       ctx.beginPath();
-      ctx.arc(px, py, p.size * 8, 0, Math.PI * 2);
+      ctx.arc(pos.x, pos.y, p.size * 7, 0, Math.PI * 2);
       ctx.fillStyle = grad;
       ctx.fill();
 
-      // Bright core
+      // Core dot
       if (!isMobile) {
         ctx.shadowColor = 'rgba(' + HR + ',' + HG + ',' + HB + ',' + p.alpha + ')';
-        ctx.shadowBlur = 15;
+        ctx.shadowBlur = 10;
       }
       ctx.beginPath();
-      ctx.arc(px, py, p.size, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255, 255, 255,' + (p.alpha * 0.9) + ')';
+      ctx.arc(pos.x, pos.y, p.size, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255, 255, 255,' + (p.alpha * 0.8) + ')';
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      // Trail effect — dim line behind pulse
-      var trailLen = 0.08;
-      var tStart = p.reverse ? Math.min(t + trailLen, 1) : Math.max(t - trailLen, 0);
-      var sx = tr.from.x + (tr.to.x - tr.from.x) * tStart;
-      var sy = tr.from.y + (tr.to.y - tr.from.y) * tStart;
+      // Trail
+      var trailT = p.reverse ? Math.min(t + 0.025, 1) : Math.max(t - 0.025, 0);
+      var trailPos = getPulsePos(p.route, trailT);
       ctx.beginPath();
-      ctx.moveTo(sx, sy);
-      ctx.lineTo(px, py);
-      ctx.strokeStyle = 'rgba(' + HR + ',' + HG + ',' + HB + ',' + (p.alpha * 0.4) + ')';
-      ctx.lineWidth = p.size * 0.8;
+      ctx.moveTo(trailPos.x, trailPos.y);
+      ctx.lineTo(pos.x, pos.y);
+      ctx.strokeStyle = 'rgba(' + HR + ',' + HG + ',' + HB + ',' + (p.alpha * 0.3) + ')';
+      ctx.lineWidth = p.size * 0.6;
+      ctx.lineCap = 'round';
       ctx.stroke();
     });
   }
 
+  /* ------------------------------------------
+     ANIMATION LOOP
+     ------------------------------------------ */
   function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frameCount++;
 
-    // Spawn pulses (throttled on mobile)
-    var spawnRate = isMobile ? 25 : 12;
+    var spawnRate = isMobile ? 30 : 15;
     if (frameCount % spawnRate === 0 && pulses.length < MAX_PULSES) spawnPulse();
 
     var mouseActive = mouse.x !== null;
 
-    // Update node alphas
-    nodes.forEach(function(node) {
-      var target = node.baseAlpha;
-      target += Math.sin(frameCount * 0.012 + node.phase) * 0.06;
-
+    // Update junction alphas
+    junctions.forEach(function(j) {
+      var target = j.baseAlpha + Math.sin(frameCount * 0.008 + j.phase) * 0.05;
       if (mouseActive) {
-        var dx = mouse.x - node.x;
-        var dy = mouse.y - node.y;
+        var dx = mouse.x - j.x, dy = mouse.y - j.y;
         var dist = Math.sqrt(dx * dx + dy * dy);
         if (dist < MOUSE_RADIUS) {
-          var prox = 1 - dist / MOUSE_RADIUS;
-          target = Math.min(target + prox * 0.6, 0.9);
+          target = Math.min(target + (1 - dist / MOUSE_RADIUS) * 0.5, 0.8);
         }
       }
+      j.alpha += (target - j.alpha) * 0.05;
+    });
 
-      node.alpha += (target - node.alpha) * 0.05;
+    // Update chip alphas
+    chips.forEach(function(chip) {
+      var target = chip.baseAlpha + Math.sin(frameCount * 0.006 + chip.phase) * 0.04;
+      if (mouseActive) {
+        var dx = mouse.x - (chip.x + chip.w / 2);
+        var dy = mouse.y - (chip.y + chip.h / 2);
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < MOUSE_RADIUS) {
+          target = Math.min(target + (1 - dist / MOUSE_RADIUS) * 0.4, 0.7);
+        }
+      }
+      chip.alpha += (target - chip.alpha) * 0.05;
     });
 
     // Update pulses
@@ -283,9 +498,9 @@
       if (pulses[i].progress >= 1) pulses.splice(i, 1);
     }
 
-    // Draw order: traces → nodes → pulses
-    drawTraces();
-    drawNodes();
+    drawRoutes();
+    drawChips();
+    drawJunctions();
     drawPulses();
 
     requestAnimationFrame(animate);
@@ -293,14 +508,12 @@
 
   window.addEventListener('resize', function() {
     isMobile = window.innerWidth < 768;
-    GRID = isMobile ? 70 : 50;
-    MAX_PULSES = isMobile ? 8 : 25;
+    MAX_PULSES = isMobile ? 8 : 20;
     resize();
   });
   window.addEventListener('mousemove', function(e) { mouse.x = e.clientX; mouse.y = e.clientY; });
   window.addEventListener('mouseleave', function() { mouse.x = null; mouse.y = null; });
 
-  // Touch support for mobile
   window.addEventListener('touchmove', function(e) {
     if (e.touches.length > 0) {
       mouse.x = e.touches[0].clientX;
