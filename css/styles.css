@@ -687,8 +687,6 @@ section.section-visible::after {
   position: relative;
   z-index: 1;
   padding: 50px 0;
-  overflow: hidden;
-  white-space: nowrap;
 }
 
 .logos-label {
@@ -701,43 +699,35 @@ section.section-visible::after {
   margin-bottom: 2rem;
   font-family: var(--font-heading);
   padding: 0 2rem;
-  white-space: normal;
 }
 
 .logos-marquee {
-  display: flex;
-  width: max-content;
-  animation: marquee 35s linear infinite;
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  height: 120px;
+  -webkit-mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
 }
 
-.logos-marquee:hover {
-  animation-play-state: paused;
-}
-
-.logos-track {
-  display: flex;
-  align-items: center;
-  gap: 4rem;
-  padding: 0 2rem;
-  flex-shrink: 0;
-}
-
-.logos-track img {
-  height: 80px;
-  max-width: 160px;
+.logos-marquee img {
+  position: absolute;
+  top: 50%;
+  height: 100px;
+  max-width: 200px;
   width: auto;
   object-fit: contain;
-  opacity: 0.35;
-  transition: all 0.5s var(--ease-out-expo);
-  filter: grayscale(100%);
+  opacity: 0.85;
+  transition: opacity 0.5s var(--ease-out-expo), filter 0.5s var(--ease-out-expo);
   background: transparent !important;
   mix-blend-mode: lighten;
+  will-change: transform;
 }
 
-.logos-track img:hover {
-  opacity: 0.9;
-  filter: grayscale(0%);
-  transform: scale(1.1);
+.logos-marquee img:hover {
+  opacity: 1;
 }
 
 
@@ -1314,10 +1304,6 @@ section.section-visible::after {
   inherits: false;
 }
 
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
 
 @keyframes orbFloat1 {
   0%, 100% { transform: translate(0, 0); }
@@ -1347,16 +1333,17 @@ section.section-visible::after {
   }
 
   .logos-marquee {
-    animation: none;
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 2rem;
-    width: auto;
+    height: auto;
+    overflow: visible;
   }
 
-  .logos-track:nth-child(2) {
-    display: none;
+  .logos-marquee img {
+    position: static;
+    transform: none !important;
   }
 
   .reveal {
@@ -1501,7 +1488,7 @@ section.section-visible::after {
   .timeline-container { padding-left: 20px; }
   .timeline-container .resume-item::after { left: -26px; width: 8px; height: 8px; }
 
-  .logos-section { overflow: visible; padding: 40px 0; }
-  .logos-track img { height: 80px; max-width: 160px; }
-  .logos-track { gap: 3rem; }
+  .logos-section { padding: 40px 0; }
+  .logos-marquee img { height: 80px; max-width: 160px; }
+  .logos-marquee { height: 100px; }
 }

@@ -25,7 +25,7 @@ Static website hosted on **AWS S3**. No build step, server-side rendering, or ba
 - **3D tilt effect** on profile photo with animated conic-gradient border
 - **Scroll-triggered reveal animations** via Intersection Observer
 - **Scroll progress bar** with glow effect
-- **Infinite logo marquee** with grayscale-to-color hover effect (uses `display: flex` + `width: max-content` + `translateX(-50%)` pattern)
+- **Infinite logo marquee** — JS-driven recycling conveyor with edge fade masks, full-color logos
 - **Mouse-following glow** on expertise cards
 - **Magnetic button effect** — buttons subtly pull toward cursor
 - **Animated resume timeline** with vertical line that draws on scroll
@@ -83,7 +83,7 @@ images/
 
 ## Layout Notes
 
-- **Logos marquee:** Uses `display: flex` + `width: max-content` on `.logos-marquee` wrapper with two identical `.logos-track` children. Animation is `translateX(-50%)` on the wrapper. Second track has `aria-hidden="true"`. Parent `.logos-section` has `overflow: hidden` and `white-space: nowrap`. Pauses on hover. Logos start grayscale (`filter: grayscale(100%)`, `opacity: 0.35`), colorize on hover. Mobile (640px): `overflow: visible` to prevent clipping on tap-to-expand.
+- **Logos marquee:** JS-driven recycling conveyor belt (`js/main.js`). A single set of `<img>` elements inside `.logos-marquee`; JS clones them at startup to fill the container width + buffer. Each logo is `position: absolute` and moved left via `translate3d` on every animation frame (0.6px/frame). When a logo's right edge exits the left boundary, it's repositioned after the rightmost logo — creating a seamless infinite loop with no overflow. Container is capped at `max-width: 1200px` to match content width. CSS `mask-image` gradient fades logos in/out at both edges (transparent → black 12% → black 88% → transparent). Logos display at full color (`opacity: 0.85`, no grayscale filter), `opacity: 1` on hover. Pauses on `mouseenter`. Respects `prefers-reduced-motion` (falls back to static flex wrap layout). Mobile (640px): logos 80px height, container 100px.
 - **Cards:** Semi-opaque dark backgrounds (`rgba(10,14,26,0.75)`) with `backdrop-filter: blur(12px)` and `-webkit-backdrop-filter: blur(12px)` for readability over the circuit background.
 - **Skills grid:** Flexbox with centered wrapping — 3 cards top row, 2 cards bottom row centered.
 - **Featured cards:** Flexbox columns with `margin-top: auto` on arrow links to align them at the bottom regardless of content height.

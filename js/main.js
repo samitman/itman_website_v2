@@ -565,6 +565,123 @@
 })();
 
 /* ============================================
+   LOGO MARQUEE — JS-driven recycling conveyor
+   Each logo is positioned individually and recycled
+   from left edge back to right edge for seamless looping.
+   ============================================ */
+(function() {
+  var container = document.querySelector('.logos-marquee');
+  if (!container) return;
+
+  var imgs = Array.prototype.slice.call(container.querySelectorAll('img'));
+  if (imgs.length === 0) return;
+
+  // Respect reduced motion
+  var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (prefersReduced) return;
+
+  var GAP = window.innerWidth < 640 ? 40 : 64; // gap between logos
+  var SPEED = 0.6; // pixels per frame
+  var paused = false;
+  var items = []; // { el, x, w }
+
+  // Wait for all images to load so we can measure widths
+  var loaded = 0;
+  imgs.forEach(function(img) {
+    if (img.complete) {
+      loaded++;
+    } else {
+      img.addEventListener('load', function() {
+        loaded++;
+        if (loaded === imgs.length) init();
+      });
+      img.addEventListener('error', function() {
+        loaded++;
+        if (loaded === imgs.length) init();
+      });
+    }
+  });
+  if (loaded === imgs.length) init();
+
+  function init() {
+    var containerWidth = container.offsetWidth;
+
+    // Measure natural widths (un-position them briefly)
+    var widths = imgs.map(function(img) {
+      return img.offsetWidth || 100;
+    });
+
+    // Calculate total width of one set of logos + gaps
+    var setWidth = 0;
+    for (var i = 0; i < widths.length; i++) {
+      setWidth += widths[i] + GAP;
+    }
+
+    // Clone logos until we have enough to fill container + buffer
+    // We need at least containerWidth + setWidth of content
+    var needed = containerWidth + setWidth;
+    var totalItems = imgs.length;
+    while (totalItems * (setWidth / imgs.length) < needed) {
+      for (var i = 0; i < imgs.length; i++) {
+        var clone = imgs[i].cloneNode(true);
+        clone.setAttribute('aria-hidden', 'true');
+        clone.removeAttribute('alt');
+        container.appendChild(clone);
+        totalItems++;
+      }
+    }
+
+    // Build items array from all images (originals + clones)
+    var allImgs = Array.prototype.slice.call(container.querySelectorAll('img'));
+    items = [];
+    var x = 0;
+    for (var i = 0; i < allImgs.length; i++) {
+      var w = widths[i % imgs.length];
+      allImgs[i].style.transform = 'translate3d(' + x + 'px, -50%, 0)';
+      allImgs[i].style.left = '0';
+      items.push({ el: allImgs[i], x: x, w: w });
+      x += w + GAP;
+    }
+
+    // Pause on hover
+    container.addEventListener('mouseenter', function() { paused = true; });
+    container.addEventListener('mouseleave', function() { paused = false; });
+
+    requestAnimationFrame(tick);
+  }
+
+  function tick() {
+    if (!paused && items.length > 0) {
+      var containerWidth = container.offsetWidth;
+
+      // Move all items left
+      for (var i = 0; i < items.length; i++) {
+        items[i].x -= SPEED;
+        items[i].el.style.transform = 'translate3d(' + items[i].x + 'px, -50%, 0)';
+      }
+
+      // Find the rightmost item
+      var rightmost = items[0];
+      for (var i = 1; i < items.length; i++) {
+        if (items[i].x > rightmost.x) rightmost = items[i];
+      }
+
+      // Recycle any item that has fully exited the left edge
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].x + items[i].w < 0) {
+          // Place it after the rightmost item
+          items[i].x = rightmost.x + rightmost.w + GAP;
+          items[i].el.style.transform = 'translate3d(' + items[i].x + 'px, -50%, 0)';
+          rightmost = items[i]; // this is now the rightmost
+        }
+      }
+    }
+
+    requestAnimationFrame(tick);
+  }
+})();
+
+/* ============================================
    NAVIGATION
    ============================================ */
 var nav = document.getElementById('nav');
