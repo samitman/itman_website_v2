@@ -1,6 +1,6 @@
 # ITman Website v2
 
-Personal portfolio and resume website for Sam Itman — IT Innovation Specialist, Cybersecurity Professional, and Project Manager.
+Personal portfolio and resume website for Sam Itman — Innovation & AI Specialist helping large organizations modernize complex business operations through AI, enterprise technology, and digital transformation.
 
 ## Hosting
 
